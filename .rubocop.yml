@@ -1,0 +1,17 @@
+---
+require:
+  - standard/cop/semantic_blocks
+
+inherit_gem:
+  standard: config/base.yml
+
+AllCops:
+  DisplayCopNames: true
+  Exclude:
+    - 'bin/*'
+    - 'Gemfile'
+    - 'tmp/**/*'
+    - 'vendor/**/*'
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: no_comma

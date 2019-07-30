@@ -1,0 +1,10 @@
+---
+sudo: false
+language: ruby
+cache: bundler
+rvm:
+  - 2.6
+  - 2.5
+  - 2.0
+  - ruby-head
+before_install: gem install bundler -v 2.0.2
