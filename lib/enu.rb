@@ -7,7 +7,15 @@ class Enu
 
     attr_writer :options
 
-    def_delegators :options, :each, :each_pair, :each_with_index, :keys, :values, :key?
+    def_delegators(
+      :options,
+      :each,
+      :each_pair,
+      :each_with_index,
+      :key?,
+      :keys,
+      :values
+    )
 
     def options
       @options ||= {}.freeze
@@ -17,7 +25,7 @@ class Enu
       key = enum_key.to_sym
 
       raise KeyError, "'#{key}' option already exists" if key?(key)
-      raise ArgumentError, "'#{key}' is a reserved key" if respond_to?(key)
+      raise ArgumentError, "'#{key}' key is reserved" if respond_to?(key)
       raise TypeError, "non-integer value" if value && !value.is_a?(Integer)
 
       explicit_value = value || (options.none? ? 0 : values.max + 1)
