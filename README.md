@@ -34,7 +34,37 @@ $ gem install enu
 
 ## Usage
 
-[TODO]
+Here is a basic example:
+
+```ruby
+# app/enums/post_status.rb
+module Enums
+  class PostStatus < Enu
+    option :draft
+    option :published
+    option :deleted
+  end
+end
+```
+
+This class defines and enum type for a blog post status, which can have three states: `draft`, `published`, and `deleted`. Each state automatically receives integer representation: 0 for `draft`, 1 for `published`, and so on. The first option will be treated as `default`.
+
+Notice the `Enums` module definition, and source file location. Neither is mandatory for an `Enu` class definition, though, it is a good practice to group sibling classes, instead of polluting root namespace. Rails [autoload](https://guides.rubyonrails.org/autoloading_and_reloading_constants.html#autoload-paths-and-eager-load-paths) mechanism will find all source files in `app` subdirectories, so there is no need to worry about enum classes resolution.
+
+After enum type is defined, it is possible to use it in a Rails model:
+
+```ruby
+# app/models/post.rb
+class Post < ApplicationRecord
+  enum status: Enums::PostStatus.options
+end
+```
+
+`options` class method will return enum representation in the form of a `Hash`, compatible with [ActiveRecord::Enum](https://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html) declaration:
+
+```ruby
+Enums::PostStatus.options  # => {"draft"=>0, "published"=>1, "deleted"=>3}
+```
 
 ## Development
 
