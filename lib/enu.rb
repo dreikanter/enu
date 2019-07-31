@@ -54,4 +54,6 @@ class Enu
     return 0 if values.empty?
     values.max + 1
   end
+
+  private_class_method :next_value
 end

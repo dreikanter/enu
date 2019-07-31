@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Alex Musayev"]
   spec.email         = ["alex.musayev@gmail.com"]
 
-  spec.summary       = "Missing enum type for Ruby and Rails"
+  spec.summary       = "[Experimental] Missing enum type for Ruby and Rails"
   spec.description   = ""
   spec.homepage      = "https://github.com/dreikanter/enu"
   spec.license       = "MIT"
