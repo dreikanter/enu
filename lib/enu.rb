@@ -1,59 +1,44 @@
+require "forwardable"
 require "enu/version"
 
 class Enu
-  def self.option(key, value = nil)
-    value ||= next_value
+  class << self
+    extend Forwardable
 
-    raise KeyError, "'#{key}' option already exists" if include?(key)
-    raise TypeError, "enum values must be integer" unless value.is_a?(Integer)
-    raise KeyError, "'#{key}' is a reserved key" if respond_to?(key)
+    attr_writer :options
 
-    str_key = key.to_s
-    @options[str_key] = value
+    def_delegators :options, :each, :each_pair, :each_with_index, :keys, :values, :key?
 
-    singleton_class.class_eval do
-      define_method(key) { str_key }
-      define_method("#{str_key}_value") { value }
+    def options
+      @options ||= {}.freeze
+    end
+
+    def option(enum_key, value = nil)
+      key = enum_key.to_sym
+
+      raise KeyError, "'#{key}' option already exists" if key?(key)
+      raise ArgumentError, "'#{key}' is a reserved key" if respond_to?(key)
+      raise TypeError, "non-integer value" if value && !value.is_a?(Integer)
+
+      explicit_value = value || (options.none? ? 0 : values.max + 1)
+      self.options = options.merge(key => explicit_value).freeze
+
+      singleton_class.class_eval do
+        define_method(key) { key }
+        define_method("#{key}_value") { explicit_value }
+      end
+    end
+
+    def inherited(descendant)
+      inherited_frozen_options = options&.clone || {}.freeze
+      descendant.class_eval { self.options = inherited_frozen_options }
+    end
+
+    def default
+      raise "empty enum, sad enum" unless options&.any?
+      keys.first
     end
   end
 
-  def self.include?(key)
-    options.key?(key.to_s)
-  end
-
-  def self.options
-    @options ||= {}
-  end
-
-  def self.keys
-    options.keys
-  end
-
-  def self.values
-    options.values
-  end
-
-  def self.default
-    raise if options.empty?
-    options.keys.first.to_s
-  end
-
-  def self.each
-    options.each { |key, value| yield key, value }
-  end
-
-  def self.each_pair(&block)
-    each(&block)
-  end
-
-  def self.each_with_index(&block)
-    each(&block)
-  end
-
-  def self.next_value
-    return 0 if values.empty?
-    values.max + 1
-  end
-
-  private_class_method :next_value
+  private_class_method :new, :option, :options=
 end
