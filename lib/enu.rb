@@ -35,6 +35,8 @@ class Enu
         define_method(key) { key }
         define_method("#{key}_value") { explicit_value }
       end
+
+      nil
     end
 
     def inherited(descendant)
