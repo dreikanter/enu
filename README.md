@@ -1,15 +1,12 @@
 # Enu
 
-⚠️ WARNING! This implementation is experimental. Please do not use in production before stable release is announced.
-
 This gem introduces missing [enumerated type](https://en.wikipedia.org/wiki/Enumerated_type) for Ruby and Rails.
 
 Purpose and features:
 
 - Unify enum types definition for Rails model attributes, compatible with ActiveRecord's [enum declarations](https://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html).
-- Use structured constants instead of magic strings or numbers to define enum values.
-- Keep track on enum references to simplify refactoring.
-- Support explicit and implicit enum options definition.
+- Use structured constants instead of magic strings or numbers to address enum values.
+- Keep track on enum references to simplify refactoring and codebase navigation.
 - Provide a standardized way to export enum definitions to client-side JavaScript modules, managed by either  Webpack or Rails Assets Pipeline.
 
 ## Installation
@@ -48,88 +45,102 @@ class PostStatus < Enu
 end
 ```
 
-This class defines an enum type for a blog post status which four optional states: `draft`, `published`, `moderated` and `deleted`. Each state automatically receives integer representation: 0 for `draft`, 1 for `published`, and so on. The first option will be treated as `default`.
+This class defines an enum type for a blog post status with a set of possible states: `draft`, `published`, `moderated` and `deleted`. Each state automatically receives integer representation: 0 for `draft`, 1 for `published`, and so on. The top defined option will be treated as the `default`.
 
-### Using enums
-
-After enum type is defined, it is possible to use it in a Rails model:
+It is also possible to specify explicit integer values for the options:
 
 ```ruby
-# app/models/post.rb
-#
-# Table name: posts
-#
-#  id               :integer          not null, primary key
-#  user_id          :integer          not null
-#  status           :integer          default(0), not null
-#  ...
-#
-class Post < ApplicationRecord
-  enum status: PostStatus.options
-  # ...
+class PostStatus < Enu
+  option :draft, 10
+  option :published, 20
 end
 ```
 
-`options` class method will return enum representation in the form of a `Hash`, compatible with [ActiveRecord::Enum](https://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html) declaration:
+Or mix implicit and explicit approach:
 
 ```ruby
-PostStatus.options  # {"draft"=>0, "published"=>1, "moderated" => 2, "deleted"=>3}
+class PostStatus < Enu
+  option :draft, 10
+  option :published
+end
 ```
 
-Use [enum helpers](https://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html) as usual:
+Enu will ensure there are no collisions in the option names and values.
+
+### Using enums
+
+Enu classes are compatible with ActiveRecord's [enum](https://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html) declaration:
 
 ```ruby
-Post.new.draft?        # true
-Post.new.published?    # false
+class Post < ApplicationRecord
+  enum status: PostStatus
+end
 
-post = Post.create!    # #<Post:...>
-post.draft?            # true
-post.published!        # true
-post.status            # "published"
+# Use enum helpers as usual:
+post = Post.create!    # => #<Post:...>
+Post.draft?            # => true
+post.published?        # => false
+Post.published.to_sql  # => "SELECT "posts".* FROM "posts" WHERE "posts"."status" = 1"
+```
 
-Post.published.to_sql  # "SELECT "posts".* FROM "posts" WHERE "posts"."status" = 1"
+Each Enu descendant inherits `options` class method, returning enum options representation in the form of a `Hash`. In addition the enumeration class delegates some `Hash` methods, so ActiveRecord can treat it as an actual hash. In the last example `enum status: PostStatus` call is equivalent to `enum status: PostStatus.options`:
+
+```ruby
+PostStatus.options    # => {:draft=>0, :published=>1, :moderated=>2, :deleted=>3}
+PostStatus.each.to_h  # => {:draft=>0, :published=>1, :moderated=>2, :deleted=>3}
 ```
 
 ### Scoped constants
 
-Sometimes native helper methods are not enough, and you need to address enum values directly. If this is the case, use scoped constants instead of magic strings values. Say, you need to update multiple attributes for a set of DB records with a single query:
+Sometimes ApplicationRecord helpers are not enough, and you need to address enum values directly. If this is the case, use scoped constants instead of magic strings values.
+
+Each `option` definition generate corresponding value method in the `Enu` descendant:
 
 ```ruby
-# app/models/user.rb
-#
-# Table name: posts
-#
-#  id               :integer          not null, primary key
-#  user_id          :integer          not null
-#  ...
-#
+PostStatus.draft            # => :draft
+PostStatus.published        # => :published
+PostStatus.moderated        # => :moderated
+PostStatus.deleted          # => :deleted
+
+# First option definition is treated as the default
+PostStatus.default          # => :draft
+```
+
+Integer representation is available as well:
+
+```ruby
+PostStatus.draft_value      # => 0
+PostStatus.published_value  # => 1
+PostStatus.moderated_value  # => 2
+PostStatus.deleted_value    # => 3
+```
+
+Say, you need to update multiple attributes for a set of DB records with a single query:
+
+```ruby
 class User < ApplicationRecord
   has_many :posts
-
-  def nasty_spammer?
-    # ...
-  end
+  # ...
 end
 
-use = User.first
+user = User.first
 
 if user.nasty_spammer?
   user.posts.update_all(
     status: PostStatus.moderated,
     moderated_by: current_user,
-    moderated_at: Time.new.utc,
     moderation_reason: 'being a nasty spammer'
   )
 end
 ```
 
-Another example is a state machine definition with [aasm](https://github.com/aasm/aasm) gem:
+Another example is a state machine definition with [aasm](https://github.com/aasm/aasm) gem. Here is the Post model, complemented with state transitions logic:
 
 ```ruby
 class Post < ApplicationRecord
   include AASM
 
-  enum status: PostStatus.options
+  enum status: PostStatus
 
   aasm column: :status, enum: true do
     state PostStatus.draft, initial: true
@@ -147,37 +158,64 @@ class Post < ApplicationRecord
       transitions from: PostStatus.published, to: PostStatus.moderated
     end
 
-    # Any post can be deleted (but only once)
-    event :dump do
+    # Any post can be moved to trash (but only once)
+    event :soft_delete do
       transitions from: PostStatus.keys.without(:deleted), to: PostStatus.deleted
     end
   end
 end
 ```
 
-Notice that `dump` event is using `PostStatus.keys` shortcut, instead of declaring a separate transition for each available post status.  `Enu` provides `keys` and `values` class methods for each enum type.
+Notice that `soft_delete` event is using `PostStatus.keys` shortcut, instead of declaring a separate transition for each available post status.
 
-Now the `Post#state` field has transition rules:
+Now the `Post#state` field has a set of transition rules:
 
 ```ruby
-post = Post.create!  # new record status will be initialized with "draft" value
-post.status          # => "draft"
+post = Post.create!
+post.status          # => :draft
 
-post.publish!        # performs sample transition and persist the new status
-post.status          # => "published"
+post.publish!        # perform sample transition and persist the new status
+post.status          # => :published
 
-post.dump!
+post.soft_delete!
+post.status          # => :deleted
 post.moderate!       # will raise an AASM::InvalidTransition, because deleted
                      # posts are not supposed to be moderated
 ```
 
-### Code base navigation
+### Inheriting enumerations
 
-Scoped constants will help to track enum type references in your codebase. Looking up an enum class name or a specific value, like  `PostStatus.draft`, is a more efficient way to navigate your codebase, comparing to a situation when you use plain string literals or symbols, like in the [Rails Guides examples](https://guides.rubyonrails.org/active_record_querying.html#enums). Chances are search results for `draft` will be much noisier in a large codebase.
+Enu descendants are immutable. In other words, after a class is declared, there is no way to change its set of options. Use inheritance to add more options:
 
-Notice the source file location. Keeping enum type definitions in a separate location is not mandatory, though, it will help to keep the source code organized. In a typical Rails application project [autoload](https://guides.rubyonrails.org/autoloading_and_reloading_constants.html#autoload-paths-and-eager-load-paths) mechanism will resolve all constants in `app` subdirectories, so there is no need to worry about requiring anything manually.
+```ruby
+class AdvancedPostStatus < PostStatus
+  option :pinned
+  option :featured
+end
 
-This readme uses `PostStatus` for the sake of brevity. In a larger real-life code base, though, it is worth considering to organize sibling classes with a module, instead of polluting root namespace:
+pp AdvancedPostStatus.options
+
+# {
+#   :draft => 0,
+#   :published => 1,
+#   :moderated => 2,
+#   :deleted => 3,
+#   :pinned => 4,
+#   :featured => 5
+# }
+```
+
+### Tracking enum type references
+
+Scoped constants help to track enum type references in the codebase. Looking up an enum class name or a specific value, like  `PostStatus.draft`, is a more efficient approach to navigate through code, comparing to a situation with plain string literals or symbols, like in the [Rails Guides examples](https://guides.rubyonrails.org/active_record_querying.html#enums). Chances are that search results for `draft` will be much noisier in a larger codebase.
+
+### Structuring codebase
+
+Notice that `PostStatus` class definition is located under `app/enums/` subdirectory. Keeping `Enu` classes in a separate location is not mandatory. Though, it will help to keep the project structure organized. In a typical Rails project [autoload mechanism](https://guides.rubyonrails.org/autoloading_and_reloading_constants.html#autoload-paths-and-eager-load-paths)  will resolve all constants in `app` subdirectories, so there is no need to worry about requiring anything manually.
+
+### Namespaces
+
+This readme uses `PostStatus` constant example, defined in the global namespace for the sake of brevity. In a larger real-life project it is worth considering to organize sibling classes with a module, instead of polluting root namespace:
 
 ```ruby
 # app/enums/post_status.rb
@@ -188,11 +226,11 @@ module Enums
 end
 ```
 
-Default Rails autoload configuration will successfully resolve `Enums::PostStatus` constant.
+Default Rails autoload configuration will successfully resolve `Enums::PostStatus` as well.
 
 #### Spring gotcha
 
-There is a known issue with using custom directories in a Rails application. If you running your app with [Spring preloader](https://github.com/rails/spring) (which is true for default configuration), make sure to restart the preloader. Otherwise, Rails autoload will not resolve any constants under `app/enums/` or any other custom paths, and will keep raising `NameError`. This command will help:
+There is a known issue with using custom directories in a Rails application. If you running your app with [Spring preloader](https://github.com/rails/spring) (which is true for default configuration), make sure to restart the preloader. Otherwise, Rails autoload will not resolve new constants under `app/enums/` or any other custom paths, and will keep raising `NameError`. This command will help:
 
 ```bash
 > bin/spring stop
