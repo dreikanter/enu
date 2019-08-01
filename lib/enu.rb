@@ -23,10 +23,10 @@ class Enu
 
     def option(enum_key, value = nil)
       key = enum_key.to_sym
-
       raise KeyError, "'#{key}' option already exists" if key?(key)
       raise ArgumentError, "'#{key}' key is reserved" if respond_to?(key)
       raise TypeError, "non-integer value" if value && !value.is_a?(Integer)
+      raise ArgumentError, "repeating value" if values.include?(value)
 
       explicit_value = value || (options.none? ? 0 : values.max + 1)
       self.options = options.merge(key => explicit_value).freeze

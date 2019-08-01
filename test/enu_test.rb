@@ -109,6 +109,17 @@ class EnuTest < Minitest::Test
     end
   end
 
+  def test_repeating_value_error
+    assert_raises(ArgumentError) do
+      new_enum do |alterego|
+        alterego.class_eval do
+          option :mango, 1
+          option :banana, 1
+        end
+      end
+    end
+  end
+
   def test_value_type_error
     assert_raises(TypeError) do
       new_enum do |alterego|
