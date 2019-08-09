@@ -7,7 +7,7 @@ Purpose and features:
 - Unify enum types definition for Rails model attributes, compatible with ActiveRecord's [enum declarations](https://edgeapi.rubyonrails.org/classes/ActiveRecord/Enum.html).
 - Use structured constants instead of magic strings or numbers to address enum values.
 - Keep track on enum references to simplify refactoring and codebase navigation.
-- Provide a standardized way to export enum definitions to client-side JavaScript modules, managed by either  Webpack or Rails Assets Pipeline.
+- Provide a standardized way to export enum definitions to client-side JavaScript modules, managed by either  Webpack or Rails Asset Pipeline.
 
 ## Installation
 
@@ -258,7 +258,7 @@ Spring stopped.
 
 ### Export enum definition to JavaScript
 
-Sometimes it is necessary to use same enum values on the client side, for instance, when you receive data object serializations from API. In this case it is possible to share your enum type definition with JavaScript code.
+Sometimes it is necessary to use the same enum values on the client-side, for instance, when you receive data object serializations from API. In this case, it is possible to share your enum type definition with JavaScript code.
 
 #### Webpack
 
@@ -293,7 +293,7 @@ postStatus.draft  // => "draft"
 
 `Object.freeze()` call in the example above will prevent accidental change of the `postStatus` values. It is optional, though.
 
-#### Rails Assets Pipeline
+#### Rails Asset Pipeline
 
 Same idea:
 
