@@ -256,6 +256,62 @@ There is a known issue with using custom directories in a Rails application. If 
 Spring stopped.
 ```
 
+### Export enum definition to JavaScript
+
+Sometimes it is necessary to use same enum values on the client side, for instance, when you receive data object serializations from API. In this case it is possible to share your enum type definition with JavaScript code.
+
+#### Webpack
+
+Make sure you have [rails-erb-loader](https://github.com/usabilityhub/rails-erb-loader) installed and enabled so your Webpack configuration will process ERB properly. If you use [Webpacker](https://github.com/rails/webpacker) gem, run `bundle exec rails webpacker:install:erb`.
+
+This example will export `PostStatus` enum to a JavaScript object:
+
+```javascript
+// app/javascript/src/enums.js.erb
+export const postStatus = Object.freeze(<%= PostStatus.to_json %>)
+```
+
+`to_json` method generates JSON replresentation for the enum class options:
+
+```json
+{
+  "draft": "draft",
+  "published": "published",
+  "moderated": "moderated",
+  "deleted": "deleted"
+}
+
+```
+
+Use generated object to reference enum values:
+
+```javascript
+import { postStatus } from 'enums'
+
+postStatus.draft  // => "draft"
+```
+
+`Object.freeze()` call in the example above will prevent accidental change of the `postStatus` values. It is optional, though.
+
+#### Rails Assets Pipeline
+
+Same idea:
+
+```javascript
+// app/assets/javascripts/application.js
+
+//= require_self
+//= require_tree ./shared
+
+window.App || (window.App = {});
+```
+
+```javascript
+// app/assets/javascripts/shared/enums.js.erb
+
+App.postStatus = Object.freeze(<%= PostStatus.to_json %>)
+```
+
 ## Development
 
 After checking out the repository, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

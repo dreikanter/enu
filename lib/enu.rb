@@ -48,6 +48,10 @@ class Enu
       raise "empty enum, sad enum" unless options&.any?
       keys.first
     end
+
+    def to_json
+      keys.map { |key| [key, key] }.to_h.to_json
+    end
   end
 
   private_class_method :new, :option, :options=

@@ -170,4 +170,16 @@ class EnuTest < Minitest::Test
     assert(new_enum.options.frozen?)
     assert(explicit_enum.options.frozen?)
   end
+
+  EXPECTED_JSON = '{"mango":"mango","banana":"banana"}'.freeze
+
+  def test_explicit_enum_to_json
+    result = explicit_enum.to_json
+    assert_equal(EXPECTED_JSON, result)
+  end
+
+  def test_implicit_enum_to_json
+    result = implicit_enum.to_json
+    assert_equal(EXPECTED_JSON, result)
+  end
 end
